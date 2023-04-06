@@ -64,12 +64,12 @@ def main():
     valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(indices[split:])
     
     train_loader = torch.utils.data.DataLoader(train_data,
-                                               batch_size = config.batch_size,
+                                               batch_size=config.batch_size,
                                                sampler=train_sampler,
                                                num_workers=config.workers,
                                                pin_memory=True)
     valid_loader = torch.utils.data.DataLoader(train_data,
-                                               batch_size = config.batch_size,
+                                               batch_size=config.batch_size,
                                                sampler=valid_sampler,
                                                num_workers=config.workers,
                                                pin_memory=True)
@@ -124,8 +124,6 @@ def main():
         
     logger.info("Final best Prec@1 = {:.4%}".format(best_top1))
     logger.info("Best Genotype is = {}".format(best_genotype))
-
-
 
 
 def train(train_loader, valid_loader, model, arch, w_optim, alpha_optim, lr, epoch):
