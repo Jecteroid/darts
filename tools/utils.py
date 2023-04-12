@@ -34,10 +34,12 @@ def get_data(dataset, data_path, cutout_length, validation):
         train_path = data_path + '/train'
 
         data_transform = torchvision.transforms.Compose([
-            torchvision.transforms.RandomHorizontalFlip(p=0.5),
+              torchvision.transforms.Resize(size=(64, 64)),
 
-            torchvision.transforms.ToTensor()
-        ])
+              torchvision.transforms.RandomHorizontalFlip(p=0.5),
+
+              torchvision.transforms.ToTensor()
+          ])
 
         trn_data = datasets.ImageFolder(root=train_path,
                                         transform=data_transform,
@@ -48,7 +50,8 @@ def get_data(dataset, data_path, cutout_length, validation):
         raise ValueError('not expected dataset = {}'.format(dataset))
 
     shape = trn_data[0][0].shape
-    input_channels = 3 if len(shape) == 4 else 1
+    print(shape)
+    input_channels = 3
     assert shape[1] == shape[2], "not expected shape = {}".format(shape)
     input_size = shape[1]
 
@@ -61,7 +64,7 @@ def get_data(dataset, data_path, cutout_length, validation):
             train_path = data_path + '/test'
 
             data_transform = torchvision.transforms.Compose([
-                torchvision.transforms.RandomHorizontalFlip(p=0.5),
+                torchvision.transforms.Resize(size=(64, 64)),
 
                 torchvision.transforms.ToTensor()
             ])
@@ -115,7 +118,7 @@ class AverageMeter():
 
 
 def accuracy(output, target, topk=(1,)):
-    maxk = max(topk)
+    maxk = 2
     batch_size = target.size(0)
 
     _, pred = output.topk(maxk, 1, True, True)
