@@ -9,7 +9,6 @@ from models import ops
 
 class AuxiliaryHead(nn.Module):
     def __init__(self, input_size, C, n_classes):
-        assert input_size in [7,8]
         super().__init__()
         self.net = nn.Sequential(
             nn.ReLU(inplace=True),
