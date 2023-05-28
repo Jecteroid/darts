@@ -64,7 +64,7 @@ def get_data(dataset, data_path, cutout_length, validation):
             train_path = data_path + '/test'
 
             data_transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize(size=(64, 64)),
+                torchvision.transforms.Resize(size=(224, 224)),
 
                 torchvision.transforms.ToTensor()
             ])
