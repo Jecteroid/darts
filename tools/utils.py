@@ -34,9 +34,7 @@ def get_data(dataset, data_path, cutout_length, validation):
         train_path = data_path + '/train'
 
         data_transform = torchvision.transforms.Compose([
-              torchvision.transforms.Resize(size=(224, 224)),
-
-              torchvision.transforms.RandomHorizontalFlip(p=0.5),
+              torchvision.transforms.Resize(size=(128, 128)),
 
               torchvision.transforms.ToTensor()
           ])
@@ -64,7 +62,7 @@ def get_data(dataset, data_path, cutout_length, validation):
             train_path = data_path + '/test'
 
             data_transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize(size=(224, 224)),
+                torchvision.transforms.Resize(size=(128, 128)),
 
                 torchvision.transforms.ToTensor()
             ])
