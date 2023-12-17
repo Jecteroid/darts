@@ -11,16 +11,37 @@ from models.search_cnn import SearchCNNController
 from architect import Architect
 from tools.visualize import plot
 
+from torch.nn.modules.loss import _WeightedLoss
+
 config = SearchConfig()
 
 device = torch.device("cuda")
 
-# tensorboard
+# # tensorboard
 tb_writer = SummaryWriter(log_dir=os.path.join(config.path, "tb"))
 tb_writer.add_text('config', config.as_markdown(), 0)
 
 logger = utils.get_logger(os.path.join(config.path, "{}.log".format(config.name)))
 config.print_params(logger.info)
+
+
+class CustomLoss(_WeightedLoss):
+    __constants__ = ['ignore_index', 'reduction', 'label_smoothing']
+    ignore_index: int
+    label_smoothing: float
+
+    def __init__(self, weight = None, size_average=None, ignore_index: int = -100,
+                 reduce=None, reduction: str = 'mean', label_smoothing: float = 0.0):
+        super().__init__(weight, size_average, reduce, reduction)
+        self.ignore_index = ignore_index
+        self.label_smoothing = label_smoothing
+
+    def forward(self, input, target, complexity):
+        print(complexity.requires_grad)
+        return F.cross_entropy(input, target, weight=self.weight,
+                               ignore_index=self.ignore_index, reduction='mean',
+                               label_smoothing=self.label_smoothing) * input.shape[0]\
+                               + complexity ** 2
 
 
 def main():
@@ -29,7 +50,7 @@ def main():
     torch.cuda.set_device(config.gpus[0])
     torch.cuda.empty_cache()
 
-    # seed setting
+    # # seed setting
     np.random.seed(config.seed)
     torch.manual_seed(config.seed)
     torch.cuda.manual_seed_all(config.seed)
@@ -43,7 +64,7 @@ def main():
     print('size - ', input_size, input_channels, n_classes, train_data)
 
     # set model
-    net_crit = nn.CrossEntropyLoss().to(device)
+    net_crit = CustomLoss().to(device)
     model = SearchCNNController(input_channels, config.init_channels, n_classes, config.layers, net_crit,
                                 n_nodes=config.nodes, device_ids=config.gpus)
     model = model.to(device)
@@ -155,7 +176,7 @@ def train(train_loader, valid_loader, model, arch, w_optim, alpha_optim, lr, epo
         # child network step (w)
         w_optim.zero_grad()
         logits = model(train_X)
-        loss = model.criterion(logits, train_y)
+        loss = model.criterion(logits, train_y, model.complexity())
         loss.backward()
 
         # gradient clipping
@@ -201,6 +222,7 @@ def train(train_loader, valid_loader, model, arch, w_optim, alpha_optim, lr, epo
         cur_step += 1
 
     logger.info("Train: [{:2d}/{}] Final Prec@1 {:.4%}".format(epoch + 1, config.epochs, top1.avg))
+    logger.info('n_operations: {}'.format(model.n_operations()))
 
 
 def validate(valid_loader, model, epoch, cur_step):
@@ -216,7 +238,7 @@ def validate(valid_loader, model, epoch, cur_step):
             N = X.size(0)
 
             logits = model(X)
-            loss = model.criterion(logits, y)
+            loss = model.criterion(logits, y, model.complexity())
 
             prec1, prec5 = utils.accuracy(logits, y, topk=(1, 5))
             losses.update(loss.item(), N)
@@ -246,5 +268,3 @@ def validate(valid_loader, model, epoch, cur_step):
 
 if __name__ == "__main__":
     main()
-
-# > when you can calculate $x=cos(y)$, then
