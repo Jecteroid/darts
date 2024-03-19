@@ -29,13 +29,17 @@ def get_data(dataset, data_path, cutout_length, validation):
         n_classes = 10
         trn_transform, val_transform = preproc.data_transforms(dataset, cutout_length)
         trn_data = dset_cls(root=data_path, train=True, download=True, transform=trn_transform)
+    elif dataset == 'stl10':
+        dset_cls = dset.STL10
+        n_classes = 10
+        trn_transform, val_transform = preproc.data_transforms(dataset, cutout_length)
+        trn_data = dset_cls(root=data_path, split='train', download=True, transform=trn_transform)
     elif dataset == 'custom':
         # Setup path to data folder
         train_path = data_path + '/train'
 
         data_transform = torchvision.transforms.Compose([
               torchvision.transforms.Resize(size=(128, 128)),
-
               torchvision.transforms.ToTensor()
           ])
 
@@ -57,7 +61,7 @@ def get_data(dataset, data_path, cutout_length, validation):
 
     if validation:
         if dataset != 'custom':
-            ret.append(dset_cls(root=data_path, train=False, download=True, transform=val_transform))
+            ret.append(dset_cls(root=data_path, split='test', download=True, transform=val_transform))
         else:
             train_path = data_path + '/test'
 
@@ -141,3 +145,4 @@ def save_checkpoint(state, ckpt_dir, is_best=False):
     if is_best:
         best_filename = os.path.join(ckpt_dir, 'best.pth.tar')
         shutil.copyfile(filename, best_filename)
+

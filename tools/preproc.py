@@ -54,12 +54,18 @@ def data_transforms(dataset, cutout_length):
             transforms.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=0.1),
             transforms.RandomVerticalFlip()
         ]
+    elif dataset == 'stl10':
+        MEAN = [0.4914, 0.4822, 0.4465]
+        STD = [0.2471, 0.2435, 0.2616]
+        transf = [
+            transforms.RandomHorizontalFlip()
+        ]
     else:
         raise ValueError('not expected dataset = {}'.format(dataset))
 
     normalize = [
         transforms.ToTensor(),
-        transforms.Normalize(MEAN, STD)
+        transforms.Normalize(MEAN, STD),
     ]
 
     train_transform = transforms.Compose(transf + normalize)
@@ -69,6 +75,13 @@ def data_transforms(dataset, cutout_length):
         train_transform.transforms.append(Cutout(cutout_length))
 
     return train_transform, valid_transform
+
+
+
+
+
+
+
 
 
 

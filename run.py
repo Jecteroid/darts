@@ -24,6 +24,9 @@ tb_writer.add_text('config', config.as_markdown(), 0)
 logger = utils.get_logger(os.path.join(config.path, "{}.log".format(config.name)))
 config.print_params(logger.info)
 
+train_acc = []
+valid_acc = []
+
 
 class CustomLoss(_WeightedLoss):
     __constants__ = ['ignore_index', 'reduction', 'label_smoothing']
@@ -37,11 +40,10 @@ class CustomLoss(_WeightedLoss):
         self.label_smoothing = label_smoothing
 
     def forward(self, input, target, complexity):
-        print(complexity.requires_grad)
         return F.cross_entropy(input, target, weight=self.weight,
                                ignore_index=self.ignore_index, reduction='mean',
                                label_smoothing=self.label_smoothing) * input.shape[0]\
-                               + complexity ** 2
+                               * complexity
 
 
 def main():
@@ -113,6 +115,10 @@ def main():
         # validation
         cur_step = (epoch + 1) * len(train_loader)
         top1 = validate(valid_loader, model, epoch, cur_step)
+
+        valid_acc.append(top1)
+
+        print('\nvalid_acc: ', valid_acc)
 
         # log
         # genotype
@@ -188,6 +194,10 @@ def train(train_loader, valid_loader, model, arch, w_optim, alpha_optim, lr, epo
         top1.update(prec1.item(), N)
         top5.update(prec5.item(), N)
 
+        train_acc.append(top1.avg)
+
+        print('\n train_acc: ', train_acc)
+
         if step % config.print_freq == 0 or step == len(train_loader) - 1:
             print("\r", end="", flush=True)
             logger.info(
@@ -222,7 +232,6 @@ def train(train_loader, valid_loader, model, arch, w_optim, alpha_optim, lr, epo
         cur_step += 1
 
     logger.info("Train: [{:2d}/{}] Final Prec@1 {:.4%}".format(epoch + 1, config.epochs, top1.avg))
-    logger.info('n_operations: {}'.format(model.n_operations()))
 
 
 def validate(valid_loader, model, epoch, cur_step):

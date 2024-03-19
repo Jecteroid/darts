@@ -164,6 +164,7 @@ class SearchCNNController(nn.Module):
 
     def n_operations(self):
         gene_ops = 0
+        gene_ops_1 = 0
 
         gene_normal = gt.parse(self.alpha_normal, k=2)
         gene_reduce = gt.parse(self.alpha_reduce, k=2)
@@ -171,45 +172,96 @@ class SearchCNNController(nn.Module):
         for i in gene_normal:
             for j in i:
                 gene_ops += 1 if j[0] != 'skip_connect' else 0
+                gene_ops_1 += 1 if j[0] != 'skip_connect' else 0
+
+        print('Normal ops: ', gene_ops_1)
+
+        gene_ops_1 = 0
 
         for i in gene_reduce:
             for j in i:
                 gene_ops += 1 if j[0] != 'skip_connect' else 0
+                gene_ops_1 += 1 if j[0] != 'skip_connect' else 0
+
+        print('Reduce ops: ', gene_ops_1)
 
         return gene_ops
 
     def complexity(self):
-        c = torch.tensor(0., requires_grad=True)
+        c_normal = torch.tensor(0., requires_grad=True)
+        c_reduce = torch.tensor(0., requires_grad=True)
 
-        fines = torch.tensor([1, 1, 0, 1, 1, 1, 1, 0]).cuda()
+        source_operations = 7.0
+        nth_operations_max = 8.0
+        nth_operations_min = 6.0
+
+        c_max = torch.tensor(1.0 / source_operations * nth_operations_max, requires_grad=True) / 2.0
+
+        c_min = torch.tensor(1.0 / source_operations * nth_operations_min, requires_grad=True) / 2.0
+
+        fines = torch.tensor([1., 1., 0., 1., 1., 1., 1.]).cuda()
+
+        print("## Alpha - normal")
 
         for a in self.alpha_normal:
+            a = a[:, :-1]
+
+            indx = torch.topk(torch.max(a, dim=1, keepdims=True)[0], 2, dim=0)[1][:, 0]
+
             max_mask = torch.zeros_like(a).scatter(1, torch.argmax(a, dim=1, keepdims=True), 1)
+
+            a = F.softmax(a, dim=-1)
+
             tmp_1 = a * max_mask
-            tmp_2 = torch.max(a, dim=1, keepdims=True)[0]
 
-            tmp_3 = tmp_1 / tmp_2
+            print(tmp_1[indx])
 
-            with_fines = torch.sum(tmp_3, dim=0) * fines
+            with_fines = torch.sum(tmp_1[indx], dim=0) * fines
 
-            c = c + torch.sum(with_fines)
+            c_normal = c_normal + torch.sum(with_fines)
+
+        print("## Alpha - reduce")
 
         for a in self.alpha_reduce:
+            a = a[:, :-1]
+
+            indx = torch.topk(torch.max(a, dim=1, keepdims=True)[0], 2, dim=0)[1][:, 0]
+
             max_mask = torch.zeros_like(a).scatter(1, torch.argmax(a, dim=1, keepdims=True), 1)
+
+            a = F.softmax(a, dim=-1)
+
             tmp_1 = a * max_mask
-            tmp_2 = torch.max(a, dim=1, keepdims=True)[0]
 
-            tmp_3 = tmp_1 / tmp_2
+            print(tmp_1[indx])
 
-            with_fines = torch.sum(tmp_3, dim=0) * fines
+            with_fines = torch.sum(tmp_1[indx], dim=0) * fines
 
-            c = c + torch.sum(with_fines)
+            c_reduce = c_reduce + torch.sum(with_fines)
 
-        print('c: ', c)
-        print('complexity: ', torch.clip(c - 8, min=0) ** 2)
-        print('n_ops: ', self.n_operations())
+        # c_normal = c_normal if c_normal - c_clip >= torch.tensor(0.1, requires_grad=True) \
+        #     else torch.tensor(0.1, requires_grad=True)
 
-        return torch.clip(c - 8, min=0)
+        # c_reduce = c_reduce if c_reduce - c_clip >= torch.tensor(0.1, requires_grad=True) \
+        #     else torch.tensor(0.1, requires_grad=True)
+
+        c_normal = torch.tensor(0.1, requires_grad=True) \
+            if c_min <= c_normal <= torch.tensor(c_max + 0.1, requires_grad=True) \
+            else c_normal - c_max if c_normal > torch.tensor(c_max + 0.1, requires_grad=True) \
+            else c_min - c_normal
+
+        c_reduce = torch.tensor(0.1, requires_grad=True) \
+            if c_min <= c_reduce <= torch.tensor(c_max + 0.1, requires_grad=True) \
+            else c_reduce - c_max if c_reduce > torch.tensor(c_max + 0.1, requires_grad=True) \
+            else c_min - c_reduce
+
+        print('complexity normal: ', c_normal)
+        print('complexity reduce: ', c_reduce)
+
+        print('complexity: ', c_normal + c_reduce)
+        self.n_operations()
+
+        return c_normal + c_reduce
 
     def genotype(self):
         gene_normal = gt.parse(self.alpha_normal, k=2)
@@ -252,6 +304,9 @@ class SearchCNNController(nn.Module):
     def named_alphas(self):
         for n, p in self._alphas:
             yield n, p
+
+
+
 
 
 
